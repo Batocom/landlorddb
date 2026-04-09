@@ -37,16 +37,16 @@
 <script>
     // ---------- DATA (mirror original Next.js component) ----------
     const propertiesData = [
-        { id: "P-1042", address: "42 Maple Ave, Unit 3B", rent: "$1,850/mo", status: "Occupied", tier: "Standard" },
-        { id: "P-1088", address: "89 Oak Street", rent: "$2,200/mo", status: "Marketing", tier: "Boosted" },
-        { id: "P-1101", address: "12 Riverfront Blvd", rent: "$3,100/mo", status: "Application Review", tier: "Premium" }
+        { id: "P-1042", address: "42 Moi Ave, Unit 3B", rent: "ksh1,850/mo", status: "Occupied", tier: "Standard" },
+        { id: "P-1088", address: "89 Tom mboya Street", rent: "ksh2,200/mo", status: "Marketing", tier: "Boosted" },
+        { id: "P-1101", address: "12 Riverload Blvd", rent: "ksh3,100/mo", status: "Application Review", tier: "Premium" }
     ];
 
     const adMetrics = {
         impressions: "12,450",
         clicks: "842",
         leads: "64",
-        cost: "$145.00"
+        cost: "ksh145.00"
     };
 
     // mock stats that update in sync with properties occupancy (for dynamic feel)
@@ -95,9 +95,9 @@
     // get recent activities (static but reflects state)
     function getRecentActivities() {
         return [
-            { title: "Rent payment received", detail: "Unit 3B • $1,850 • 2 hours ago", color: "emerald" },
-            { title: "New application submitted", detail: "89 Oak Street • Screening initiated • 5 hours ago", color: "blue" },
-            { title: "Ad campaign optimized", detail: "12 Riverfront Blvd • Boosted to Premium tier • Yesterday", color: "amber" }
+            { title: "Rent payment received", detail: "Unit 3B • ksh 1,850 • 2 hours ago", color: "emerald" },
+            { title: "New application submitted", detail: "89 Tom mboya Street • Screening initiated • 5 hours ago", color: "blue" },
+            { title: "Ad campaign optimized", detail: "12 Riverload Blvd • Boosted to Premium tier • Yesterday", color: "amber" }
         ];
     }
 
