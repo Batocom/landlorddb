@@ -60,11 +60,11 @@
     function computeMonthlyRevenue() {
         // extract numeric rent values (strip $ and /mo)
         const total = propertiesData.reduce((sum, p) => {
-            const raw = p.rent.replace('$', '').replace('/mo', '').replace(',', '');
+            const raw = p.rent.replace('ksh', '').replace('/mo', '').replace(',', '');
             const num = parseFloat(raw);
             return sum + (isNaN(num) ? 0 : num);
         }, 0);
-        return `$${total.toLocaleString()}`;
+        return `ksh${total.toLocaleString()}`;
     }
 
     function countActiveApplications() {
