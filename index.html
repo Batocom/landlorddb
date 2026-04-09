@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Rental Empire | Landlord Dashboard</title>
+    <!-- Tailwind CSS v3 + basic interceptions -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom override for some finer tailwind behavior -->
+    <style>
+        /* smooth transitions & minor custom ring */
+        button, .card-hover {
+            transition: all 0.2s ease;
+        }
+        .sidebar-nav-btn {
+            transition: background 0.2s, color 0.2s;
+        }
+        /* Custom scroll for tables */
+        .overflow-x-auto {
+            scrollbar-width: thin;
+        }
+        body {
+            background-color: #f9fafb;
+        }
+        /* ensure no horizontal overflow */
+        .min-h-screen {
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 antialiased font-sans">
+
+<div id="app-root" class="min-h-screen flex flex-col md:flex-row">
+    <!-- dynamic rendering via vanilla JS -->
+</div>
+
+<script>
+    // ---------- DATA (mirror original Next.js component) ----------
+    const propertiesData = [
+        { id: "P-1042", address: "42 Maple Ave, Unit 3B", rent: "$1,850/mo", status: "Occupied", tier: "Standard" },
+        { id: "P-1088", address: "89 Oak Street", rent: "$2,200/mo", status: "Marketing", tier: "Boosted" },
+        { id: "P-1101", address: "12 Riverfront Blvd", rent: "$3,100/mo", status: "Application Review", tier: "Premium" }
+    ];
+
+    const adMetrics = {
+        impressions: "12,450",
+        clicks: "842",
+        leads: "64",
+        cost: "$145.00"
+    };
+
+    // mock stats that update in sync with properties occupancy (for dynamic feel)
+    function computeOccupancyRate() {
+        const occupied = propertiesData.filter(p => p.status === "Occupied").length;
+        const total = propertiesData.length;
+        const rate = total === 0 ? 0 : Math.round((occupied / total) * 100);
+        return `${rate}%`;
+    }
+
+    function computeMonthlyRevenue() {
+        // extract numeric rent values (strip $ and /mo)
+        const total = propertiesData.reduce((sum, p) => {
+            const raw = p.rent.replace('$', '').replace('/mo', '').replace(',', '');
+            const num = parseFloat(raw);
+            return sum + (isNaN(num) ? 0 : num);
+        }, 0);
+        return `$${total.toLocaleString()}`;
+    }
+
+    function countActiveApplications() {
+        // in original "Application Review" counts as active + some extra mock logic
+        const reviewUnits = propertiesData.filter(p => p.status === "Application Review").length;
+        // plus mock "14" originally but keep dynamic: base + marketing leads extra? but keep consistent with original demo: 14 active + 6 screening
+        // To stay faithful: original had "Active Applications: 14" and "6 require screening"
+        // We'll keep 14 as a baseline + some fluctuation based on marketing properties? but no need, just consistent
+        // For better realism, we preserve the exact original mock numbers unless properties change? But we tie slightly:
+        // Use original value 14 for simplicity but note it can be static. However, we want interactive consistency? 
+        // For dynamic fun: if any property in marketing => leads increase? But dashboard should match same spirit.
+        // I will keep original static 14 but can also hint if we add properties later? But original spec uses fixed array, so we stick to original numbers: 14
+        return 14;
+    }
+
+    function getRequireScreeningCount() {
+        return 6;  // as per original design
+    }
+
+    function getAdSpend() {
+        return adMetrics.cost;
+    }
+
+    function getROI() {
+        return "440%";
+    }
+
+    // get recent activities (static but reflects state)
+    function getRecentActivities() {
+        return [
+            { title: "Rent payment received", detail: "Unit 3B • $1,850 • 2 hours ago", color: "emerald" },
+            { title: "New application submitted", detail: "89 Oak Street • Screening initiated • 5 hours ago", color: "blue" },
+            { title: "Ad campaign optimized", detail: "12 Riverfront Blvd • Boosted to Premium tier • Yesterday", color: "amber" }
+        ];
+    }
+
+    // ---------- STATE MANAGEMENT ----------
+    let currentView = "dashboard";   // dashboard, properties, applications, advertising, leases, finances
+
+    // Helper to re-render entire UI
+    function renderApp() {
+        const root = document.getElementById("app-root");
+        if (!root) return;
+
+        // Build sidebar and main content based on currentView
+        const sidebarHtml = buildSidebar();
+        const mainHtml = buildMainContent();
+        
+        root.innerHTML = `
+            ${sidebarHtml}
+            ${mainHtml}
+        `;
+        
+        // Attach event listeners for sidebar buttons and all interactive elements (like Manage, Upgrade, Add Property, etc.)
+        attachEventListeners();
+    }
+
+    function buildSidebar() {
+        const tabs = ["dashboard", "properties", "applications", "advertising", "leases", "finances"];
+        const tabLabels = {
+            dashboard: "Dashboard",
+            properties: "Properties",
+            applications: "Applications",
+            advertising: "Advertising",
+            leases: "Leases",
+            finances: "Finances"
+        };
+        
+        const buttonsHtml = tabs.map(tab => {
+            const isActive = currentView === tab;
+            const baseClasses = "w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition sidebar-nav-btn";
+            const activeClasses = "bg-white/15 text-white";
+            const inactiveClasses = "text-gray-300 hover:bg-white/10";
+            return `
+                <button data-nav-tab="${tab}" class="${baseClasses} ${isActive ? activeClasses : inactiveClasses}">
+                    ${tabLabels[tab]}
+                </button>
+            `;
+        }).join('');
+        
+        return `
+            <aside class="w-full md:w-64 bg-indigo-900 text-white p-6 shadow-xl md:min-h-screen">
+                <h1 class="text-2xl font-bold mb-8 tracking-tight flex items-center gap-2">Rental Empire 🏢</h1>
+                <nav class="space-y-2">
+                    ${buttonsHtml}
+                </nav>
+                <div class="mt-12 pt-6 border-t border-indigo-800/40 text-xs text-indigo-200 hidden md:block">
+                    <p>Property manager v2.0</p>
+                </div>
+            </aside>
+        `;
+    }
+
+    function buildMainContent() {
+        // based on currentView render different panels
+        if (currentView === "dashboard") {
+            return buildDashboardView();
+        } else if (currentView === "properties") {
+            return buildPropertiesView();
+        } else if (currentView === "applications") {
+            return buildApplicationsView();
+        } else if (currentView === "advertising") {
+            return buildAdvertisingView();
+        } else if (currentView === "leases") {
+            return buildLeasesView();
+        } else if (currentView === "finances") {
+            return buildFinancesView();
+        } else {
+            return buildDashboardView();
+        }
+    }
+
+    // ---------- DASHBOARD VIEW (original layout) ----------
+    function buildDashboardView() {
+        const occupancyRate = computeOccupancyRate();
+        const monthlyRevenue = computeMonthlyRevenue();
+        const activeApps = countActiveApplications();
+        const requireScreening = getRequireScreeningCount();
+        const adSpend = getAdSpend();
+        const roi = getROI();
+        const activities = getRecentActivities();
+
+        // properties table rows
+        const propertiesRows = propertiesData.map(p => {
+            let statusClass = "";
+            if (p.status === "Occupied") statusClass = "bg-green-100 text-green-700";
+            else if (p.status === "Marketing") statusClass = "bg-blue-100 text-blue-700";
+            else statusClass = "bg-amber-100 text-amber-700";
+            
+            let tierClass = "";
+            if (p.tier === "Premium") tierClass = "bg-purple-100 text-purple-700";
+            else if (p.tier === "Boosted") tierClass = "bg-amber-100 text-amber-700";
+            else tierClass = "bg-gray-100 text-gray-600";
+            
+            return `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="px-6 py-4">
+                        <p class="font-medium text-gray-900">${escapeHtml(p.address)}</p>
+                        <p class="text-xs text-gray-500">${escapeHtml(p.id)}</p>
+                    </td>
+                    <td class="px-6 py-4 text-gray-700 font-medium">${escapeHtml(p.rent)}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 text-xs rounded-full font-medium ${statusClass}">${escapeHtml(p.status)}</span></td>
+                    <td class="px-6 py-4"><span class="px-2 py-1 text-xs rounded-full font-medium ${tierClass}">${escapeHtml(p.tier)}</span></td>
+                    <td class="px-6 py-4"><button data-manage-property="${p.id}" class="text-indigo-600 text-sm font-medium hover:underline">Manage</button></td>
+                </tr>
+            `;
+        }).join('');
+
+        const activitiesHtml = activities.map(act => {
+            let dotColor = "";
+            if (act.color === "emerald") dotColor = "bg-emerald-500";
+            else if (act.color === "blue") dotColor = "bg-blue-500";
+            else dotColor = "bg-amber-500";
+            return `
+                <div class="flex items-start gap-3">
+                    <div class="w-2 h-2 mt-2 ${dotColor} rounded-full"></div>
+                    <div>
+                        <p class="text-gray-900 font-medium">${escapeHtml(act.title)}</p>
+                        <p class="text-gray-500 text-xs md:text-sm">${escapeHtml(act.detail)}</p>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <main class="flex-1 p-4 md:p-8 overflow-x-auto">
+                <header class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-900">Landlord Dashboard</h2>
+                        <p class="text-gray-500 mt-1 text-sm">Manage properties, track applications, and optimize advertising</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button id="viewReportsBtn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 shadow-sm">View Reports</button>
+                        <button id="addPropertyBtn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 shadow-sm transition">+ Add Property</button>
+                    </div>
+                </header>
+
+                <!-- KPI Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <p class="text-sm font-medium text-gray-500">Occupancy Rate</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">${occupancyRate}</p>
+                        <p class="text-xs text-gray-400 mt-1">${propertiesData.filter(p => p.status === "Occupied").length} of ${propertiesData.length} units filled</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <p class="text-sm font-medium text-gray-500">Monthly Revenue</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">${monthlyRevenue}</p>
+                        <p class="text-xs text-gray-400 mt-1">Next payout: May 3</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <p class="text-sm font-medium text-gray-500">Active Applications</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">${activeApps}</p>
+                        <p class="text-xs text-gray-400 mt-1">${requireScreening} require screening</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <p class="text-sm font-medium text-gray-500">Ad Spend</p>
+                        <p class="text-2xl font-bold text-gray-900 mt-1">${adSpend}</p>
+                        <p class="text-xs text-gray-400 mt-1">ROI: ${roi}</p>
+                    </div>
+                </div>
+
+                <!-- Portfolio table + Advertising Card -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                    <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">Property Portfolio</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm min-w-[500px]">
+                                <thead class="bg-gray-50 text-gray-600">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left font-medium">Property</th>
+                                        <th class="px-6 py-3 text-left font-medium">Rent</th>
+                                        <th class="px-6 py-3 text-left font-medium">Status</th>
+                                        <th class="px-6 py-3 text-left font-medium">Ad Tier</th>
+                                        <th class="px-6 py-3 text-left font-medium"></th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-200">
+                                    ${propertiesRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Advertising Center -->
+                    <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6">
+                        <h3 class="text-lg font-semibold text-amber-900 mb-2">📈 Advertising Center</h3>
+                        <p class="text-sm text-amber-700 mb-4">Boost visibility and fill vacancies 3x faster with targeted campaigns.</p>
+                        <div class="space-y-3 mb-5">
+                            <div class="flex justify-between text-sm"><span class="text-amber-800">Impressions</span><span class="font-medium text-amber-900">${adMetrics.impressions}</span></div>
+                            <div class="flex justify-between text-sm"><span class="text-amber-800">Clicks</span><span class="font-medium text-amber-900">${adMetrics.clicks}</span></div>
+                            <div class="flex justify-between text-sm"><span class="text-amber-800">Qualified Leads</span><span class="font-medium text-amber-900">${adMetrics.leads}</span></div>
+                        </div>
+                        <button id="upgradeCampaignBtn" class="w-full bg-amber-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-amber-700 transition shadow-sm">Upgrade Campaign</button>
+                    </div>
+                </div>
+
+                <!-- Recent Activity Card -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                    <div class="space-y-4 text-sm">
+                        ${activitiesHtml}
+                    </div>
+                </div>
+            </main>
+        `;
+    }
+
+    // Additional views (simplified but functional to keep consistent navigation)
+    function buildPropertiesView() {
+        const propertiesRowsFull = propertiesData.map(p => `
+            <div class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col md:flex-row justify-between items-start gap-3 hover:shadow-sm transition">
+                <div>
+                    <p class="font-bold text-gray-900">${escapeHtml(p.address)}</p>
+                    <p class="text-xs text-gray-500">${escapeHtml(p.id)}</p>
+                    <p class="text-sm mt-1">${escapeHtml(p.rent)} • Status: <span class="font-medium">${escapeHtml(p.status)}</span> • Tier: ${escapeHtml(p.tier)}</p>
+                </div>
+                <button data-manage-property="${p.id}" class="px-3 py-1 text-indigo-700 bg-indigo-50 rounded-lg text-sm font-medium hover:bg-indigo-100">Manage Property</button>
+            </div>
+        `).join('');
+        return `
+            <main class="flex-1 p-4 md:p-8">
+                <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
+                    <h2 class="text-2xl font-bold text-gray-900">Properties</h2>
+                    <button id="addPropertyBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">+ Add New Property</button>
+                </div>
+                <div class="space-y-4">${propertiesRowsFull}</div>
+            </main>
+        `;
+    }
+
+    function buildApplicationsView() {
+        return `
+            <main class="flex-1 p-4 md:p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Applications (14 Active)</h2>
+                <p class="text-gray-500 mb-6">Review tenant applications and screening reports.</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+                    <div class="space-y-4">
+                        <div class="border-b pb-3 flex justify-between items-center flex-wrap">
+                            <div><span class="font-medium">Emma Chen</span> - 89 Oak Street</div>
+                            <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Credit Check Pending</span>
+                            <button class="text-indigo-600 text-sm">Review →</button>
+                        </div>
+                        <div class="border-b pb-3 flex justify-between items-center flex-wrap">
+                            <div><span class="font-medium">Marcus Wright</span> - 12 Riverfront Blvd</div>
+                            <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Pre-approved</span>
+                            <button class="text-indigo-600 text-sm">Review →</button>
+                        </div>
+                        <div class="pb-2 flex justify-between items-center flex-wrap">
+                            <div><span class="font-medium">Sophia Martinez</span> - 42 Maple Ave</div>
+                            <span class="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Screening Required</span>
+                            <button class="text-indigo-600 text-sm">Review →</button>
+                        </div>
+                    </div>
+                    <div class="mt-6 pt-4 text-center text-sm text-gray-400">+ 11 more applications in queue</div>
+                </div>
+            </main>
+        `;
+    }
+
+    function buildAdvertisingView() {
+        return `
+            <main class="flex-1 p-4 md:p-8">
+                <h2 class="text-2xl font-bold text-gray-900">Advertising Campaigns</h2>
+                <p class="text-gray-500 mb-6">Monitor ad performance and boost listings.</p>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl border p-6">
+                        <h3 class="font-semibold text-lg">Current Campaign</h3>
+                        <div class="mt-3 space-y-2"><span class="font-medium">Impressions:</span> ${adMetrics.impressions}<br><span class="font-medium">Clicks:</span> ${adMetrics.clicks}<br><span class="font-medium">Leads:</span> ${adMetrics.leads}<br><span class="font-medium">Cost:</span> ${adMetrics.cost}</div>
+                        <button id="upgradeCampaignBtn" class="mt-5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm w-full">Upgrade to Premium Reach</button>
+                    </div>
+                    <div class="bg-amber-50 rounded-xl border border-amber-200 p-6">
+                        <p class="text-amber-800 text-sm">✨ Recommendation: Boost "12 Riverfront Blvd" to Ultra Visibility.</p>
+                        <button class="mt-3 text-amber-700 underline text-sm">Get Estimate</button>
+                    </div>
+                </div>
+            </main>
+        `;
+    }
+
+    function buildLeasesView() {
+        return `
+            <main class="flex-1 p-4 md:p-8">
+                <h2 class="text-2xl font-bold text-gray-900">Leases & Agreements</h2>
+                <p class="text-gray-500 mb-6">Active leases and renewal tracking.</p>
+                <div class="bg-white rounded-xl border p-6">
+                    <ul class="divide-y">
+                        <li class="py-3 flex justify-between"><span>42 Maple Ave, Unit 3B</span><span class="text-sm text-gray-500">Expires Dec 2025</span><button class="text-indigo-600 text-sm">Renew</button></li>
+                        <li class="py-3 flex justify-between"><span>89 Oak Street</span><span class="text-sm text-gray-500">Vacant - Marketing</span><button class="text-indigo-600 text-sm">Create Lease</button></li>
+                        <li class="py-3 flex justify-between"><span>12 Riverfront Blvd</span><span class="text-sm text-gray-500">Pending approval</span><button class="text-indigo-600 text-sm">Review</button></li>
+                    </ul>
+                </div>
+            </main>
+        `;
+    }
+
+    function buildFinancesView() {
+        const revenue = computeMonthlyRevenue();
+        return `
+            <main class="flex-1 p-4 md:p-8">
+                <h2 class="text-2xl font-bold text-gray-900">Financial Overview</h2>
+                <div class="grid md:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-white rounded-xl border p-6 shadow-sm"><p class="text-gray-500 text-sm">Total Monthly Revenue</p><p class="text-3xl font-bold">${revenue}</p><p class="text-xs text-green-600">+8% vs last month</p></div>
+                    <div class="bg-white rounded-xl border p-6 shadow-sm"><p class="text-gray-500 text-sm">Ad Spend (MTD)</p><p class="text-3xl font-bold">${adMetrics.cost}</p><p class="text-xs">ROI 440%</p></div>
+                </div>
+                <div class="mt-6 bg-white p-5 rounded-xl border"><p class="font-medium">Upcoming Payout: May 3, 2025 - Estimated $6,840</p><div class="w-full bg-gray-200 h-2 rounded-full mt-2"><div class="bg-indigo-600 h-2 rounded-full w-3/4"></div></div></div>
+            </main>
+        `;
+    }
+
+    // Helper: escape HTML to avoid injection
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+            return c;
+        });
+    }
+
+    // Attach all dynamic events
+    function attachEventListeners() {
+        // Sidebar navigation buttons
+        document.querySelectorAll('[data-nav-tab]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = btn.getAttribute('data-nav-tab');
+                if (tab) {
+                    currentView = tab;
+                    renderApp();
+                }
+            });
+        });
+
+        // Manage property buttons (multiple)
+        document.querySelectorAll('[data-manage-property]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const propId = btn.getAttribute('data-manage-property');
+                alert(`📋 Manage property: ${propId}\n(Full management panel would open here.)`);
+            });
+        });
+
+        // Add property button(s) - multiple possible ids
+        const addButtons = document.querySelectorAll('#addPropertyBtn');
+        addButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                alert("➕ Add Property flow: form to create new listing (simulated). In production, you'd enter address, rent, etc.");
+            });
+        });
+
+        // Upgrade campaign buttons
+        const upgradeBtns = document.querySelectorAll('#upgradeCampaignBtn');
+        upgradeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                alert("🚀 Upgrade advertising campaign: Boost visibility + AI targeting would be activated.");
+            });
+        });
+
+        // View Reports button
+        const reportsBtn = document.getElementById('viewReportsBtn');
+        if (reportsBtn) {
+            reportsBtn.addEventListener('click', () => {
+                alert("📊 Monthly reports: Occupancy trends, ad performance, revenue insights (demo).");
+            });
+        }
+    }
+
+    // initial render
+    renderApp();
+</script>
+</body>
+</html>
